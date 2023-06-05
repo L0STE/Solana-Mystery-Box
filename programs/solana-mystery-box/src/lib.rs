@@ -8,7 +8,6 @@ pub use crate::state::*;
 
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use rand::Rng; 
 use solana_program::program::{invoke_signed, invoke};
 use anchor_spl::token;
 
@@ -22,16 +21,12 @@ pub mod solana_mystery_box {
     pub fn initizialize_box(
         ctx: Context<InitializeBox>,
         boxname: String,
-        item1: u32, //Mint Address
         odd1: f32,
         amount1: u64,
-        item2: u32,
         odd2: f32,
         amount2: u64,
-        item3: u32,
         odd3: f32,
         amount3: u64,
-        item4: u32,
         odd4: f32,
         amount4: u64,
         box_bump: u8,
@@ -64,7 +59,7 @@ pub mod solana_mystery_box {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_accounts = token::Transfer{
             from: ctx.accounts.owner_ata.to_account_info(), 
-            to: ctx.accounts.vault_ata.to_account_info(),
+            to: ctx.accounts.box_ata.to_account_info(),
             authority: ctx.accounts.owner.to_account_info()
         };
         let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
@@ -79,12 +74,10 @@ pub mod solana_mystery_box {
     pub fn box_withdraw(
         ctx: Context<BoxWithdraw>,
     ) -> Result<()> {
-        let box_state = &mut ctx.accounts.box_state;
-
         let seeds = &[
             "box".as_bytes(),
-            &ctx.accounts.box_account.key().clone().to_bytes(),
-            &[box_state.box_bump]
+            &ctx.accounts.box_state.key().clone().to_bytes(),
+            &[ctx.accounts.box_state.box_bump]
         ];
         let signer_seeds = &[&seeds[..]];
 
@@ -97,13 +90,14 @@ pub mod solana_mystery_box {
         let cpi_context = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
         
         
-        token::transfer(cpi_context, box_state.bank)?; 
+        token::transfer(cpi_context, ctx.accounts.box_state.bank)?; 
 
-        box_state.bank = 0;
+        ctx.accounts.box_state.bank = 0;
 
         Ok(())
     }
 
+/* 
     //Right now it's FREE to roll the box, but in the future it will cost some SOL
     pub fn open_box(
         ctx: Context<OpenBox>,
@@ -210,7 +204,7 @@ pub mod solana_mystery_box {
         Ok(())
     }
 
-
+*/
 
 
 }

@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
+use anchor_spl::token::Token;
 
 use crate::state::*;
 
@@ -8,12 +9,13 @@ pub struct InitializeBox<'info> {
     #[account(
         init,
         payer = owner,
-        space = Box::space() + 20, //Max Length of String = 20
+        space = 200, //Max Length of String = 20
     )]
-    pub box_account: Account<'info, Box>,
-    #[account(seeds = [b"box", box_account.key().as_ref()], bump)]
+    pub box_state: Account<'info, Box>,
+    #[account(seeds = [b"box", box_state.key().as_ref()], bump)]
     pub box_vault: SystemAccount<'info>,
 
+    #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -22,15 +24,17 @@ pub struct InitializeBox<'info> {
 pub struct BoxDeposit<'info> {
     #[account(
         mut,
-        constraint = box_account.owner == *owner.key,
+        constraint = box_state.owner == *owner.key,
     )]
-    pub box_account: Account<'info, Box>,
-    #[account(seeds = [b"box", box_account.key().as_ref()], bump = box_account.box_bump)]
+    pub box_state: Account<'info, Box>,
+    #[account(seeds = [b"box", box_state.key().as_ref()], bump = box_state.box_bump)]
     pub box_vault: SystemAccount<'info>,
     #[account(mut)]
     pub box_ata: Account<'info, TokenAccount>,
 
+    #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(mut)]
     pub owner_ata: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -40,21 +44,23 @@ pub struct BoxDeposit<'info> {
 pub struct BoxWithdraw<'info> {
     #[account(
         mut,
-        constraint = box_account.owner == *owner.key,
+        constraint = box_state.owner == *owner.key,
     )]
-    pub box_account: Account<'info, Box>,
-    #[account(seeds = [b"box", box_account.key().as_ref()], bump = box_account.box_bump)]
+    pub box_state: Account<'info, Box>,
+    #[account(seeds = [b"box", box_state.key().as_ref()], bump = box_state.box_bump)]
     pub box_vault: SystemAccount<'info>,
     #[account(mut)]
     pub box_ata: Account<'info, TokenAccount>,
 
+    #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(mut)]
     pub owner_ata: Account<'info, TokenAccount>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
 
-//ToDo
+/* 
 #[derive(Accounts)]
 pub struct OpenBox<'info> {
     #[account(
@@ -75,3 +81,5 @@ pub struct OpenBox<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
+
+*/
