@@ -1,7 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { SolanaMysteryBox } from "../target/types/solana_mystery_box";
-import { Connection, clusterApiUrl, ConfirmOptions, PublicKey, SystemProgram, LAMPORTS_PER_SOL} from "@solana/web3.js";
+import { Connection, clusterApiUrl, ConfirmOptions, PublicKey, SystemProgram, LAMPORTS_PER_SOL, Transaction} from "@solana/web3.js";
+import { NATIVE_MINT, TOKEN_PROGRAM_ID, createSyncNativeInstruction, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 
 describe("solana-mystery-box", () => {
   // Configure the client to use the local cluster.
@@ -63,32 +64,121 @@ const [boxKey, _bump] = PublicKey.findProgramAddressSync(boxSeeds, program.progr
 
 it("Initialising the BOX", async () => {
   try {
-  const tx = await program.methods
-  .initizializeBox(
-    box,
-    odd1,
-    new anchor.BN(amount1),
-    odd2,
-    new anchor.BN(amount2),
-    odd3,
-    new anchor.BN(amount3),
-    odd4,
-    new anchor.BN(amount4),
-    _bump
-  )
-  .accounts({
-    boxState: boxState.publicKey,
-    boxVault: boxKey,
-    owner: keypair.publicKey,
-    systemProgram: SystemProgram.programId,
-  })
-  .signers([
-    boxState,
-    keypair
-  ]).rpc();
-} catch (err) {
-  console.log(err);
-}
+    const tx = await program.methods
+    .initizializeBox(
+      odd1,
+      odd2,
+      odd3,
+      odd4,
+      new anchor.BN(amount1),
+      new anchor.BN(amount2),
+      new anchor.BN(amount3),
+      new anchor.BN(amount4),
+      box,
+      _bump
+    )
+    .accounts({
+      boxState: boxState.publicKey,
+      boxVault: boxKey,
+      owner: keypair.publicKey,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([
+      boxState,
+      keypair
+    ]).rpc();
+  } catch (err) {
+    console.log(err);
+  }
 })
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+let amount = 10*LAMPORTS_PER_SOL;
+
+it("Initialising both the ATA and fund Sol transfer", async () => {
+  try {
+    const ownerAta = await getOrCreateAssociatedTokenAccount(provider.connection, keypair, NATIVE_MINT, keypair.publicKey);
+    console.log("\nOwnerATA created Succesfully!");    
+    const boxAta = await getOrCreateAssociatedTokenAccount(provider.connection, keypair, NATIVE_MINT, boxKey, true);
+    console.log("\nBoxAta created Succesfully!");  
+
+    let transferTx = new Transaction().add(
+      // trasnfer SOL
+      SystemProgram.transfer({
+        fromPubkey: keypair.publicKey,
+        toPubkey: ownerAta.address,
+        lamports: amount,
+      }),
+      // sync wrapped SOL balance
+      createSyncNativeInstruction(ownerAta.address)
+    );
+
+    let depositTx = await program.methods
+      .boxDeposit(
+        new anchor.BN(amount),
+      )
+      .accounts({
+        boxState: boxState.publicKey,
+        boxVault: boxKey,
+        boxAta: boxAta.address,
+        owner: keypair.publicKey,
+        ownerAta: ownerAta.address,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([
+        keypair
+      ]).rpc();
+
+    console.log("\nDeposit Succesfull!");
+
+    let withdrawTx = await program.methods
+      .boxWithdraw()
+      .accounts({
+        boxState: boxState.publicKey,
+        boxVault: boxKey,
+        boxAta: boxAta.address,
+        owner: keypair.publicKey,
+        ownerAta: ownerAta.address,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([
+        keypair
+      ]).rpc();
+
+    console.log("\nWithdraw Succesfull!");
+
+    depositTx = await program.methods
+      .boxDeposit(
+        new anchor.BN(amount),
+      )
+      .accounts({
+        boxState: boxState.publicKey,
+        boxVault: boxKey,
+        boxAta: boxAta.address,
+        owner: keypair.publicKey,
+        ownerAta: ownerAta.address,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([
+        keypair
+      ]).rpc();
+
+    let accountBalance = await provider.connection.getBalance(boxAta.address);
+    console.log("\nDeposit Succesfull! New Vault Balance: ", accountBalance/LAMPORTS_PER_SOL);
+    let boxAccount = await program.account.boxState.fetch(boxState.publicKey);
+    console.log(`Your Balance: ${boxAccount.bank}`);
+
+  } catch (err) {
+    console.log(err);
+  }
+})
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 });

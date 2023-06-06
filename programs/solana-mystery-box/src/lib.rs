@@ -20,15 +20,15 @@ pub mod solana_mystery_box {
     //Right now it's made so you can only use 1 token: Sol / Usdc / Whatever
     pub fn initizialize_box(
         ctx: Context<InitializeBox>,
-        boxname: String,
         odd1: f32,
-        amount1: u64,
         odd2: f32,
-        amount2: u64,
         odd3: f32,
-        amount3: u64,
         odd4: f32,
+        amount1: u64,
+        amount2: u64,
+        amount3: u64,
         amount4: u64,
+        boxname: String,
         box_bump: u8,
     ) -> Result<()> {
         let box_state = &mut ctx.accounts.box_state;

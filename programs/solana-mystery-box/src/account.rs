@@ -5,11 +5,13 @@ use anchor_spl::token::Token;
 use crate::state::*;
 
 #[derive(Accounts)]
+#[instruction(odd1: f32, odd2: f32, odd3: f32, odd4: f32)]
 pub struct InitializeBox<'info> {
     #[account(
         init,
         payer = owner,
         space = 200, //Max Length of String = 20
+        constraint = odd1 + odd2 + odd3 + odd4 == 1.0,
     )]
     pub box_state: Account<'info, Box>,
     #[account(seeds = [b"box", box_state.key().as_ref()], bump)]
